@@ -1,0 +1,20 @@
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: b00930141bucketcloud
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            MaxAge: 3000
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - "Authorization"

@@ -1,0 +1,345 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  OrderBucketCF:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: orderbucketcfb00930141
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            MaxAge: 3000
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - "Authorization"
+
+  LambdaFunction1:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: RegistrationCF
+      Code:
+        S3Bucket: "b00930141bucketcloud"
+        S3Key: "RegistrationLambda.zip"
+      Handler: lambda_function.lambda_handler
+      Runtime: "python3.11"
+      Timeout: 30
+      Role: "arn:aws:iam::374851180081:role/LabRole"
+
+  LambdaFunction2:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: LoginCF
+      Code:
+        S3Bucket: "b00930141bucketcloud"
+        S3Key: "LoginLambda.zip"
+      Handler: "lambda_function.lambda_handler"
+      Runtime: "python3.11"
+      Timeout: 30
+      Role: "arn:aws:iam::374851180081:role/LabRole"
+
+  LambdaFunction3:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: ShowItemsCF
+      Code:
+        S3Bucket: "b00930141bucketcloud"
+        S3Key: "showItemsLambda.zip"
+      Handler: "lambda_function.lambda_handler"
+      Runtime: "python3.11"
+      Timeout: 30
+      Role: "arn:aws:iam::374851180081:role/LabRole"
+
+  LambdaFunction4:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: UploadImageToTextractCF
+      Code:
+        S3Bucket: "b00930141bucketcloud"
+        S3Key: "TextractLambda.zip"
+      Handler: "lambda_function.lambda_handler"
+      Runtime: "python3.11"
+      Timeout: 30
+      Role: "arn:aws:iam::374851180081:role/LabRole"
+  
+     
+  LambdaFunction5:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: InvokeLambdaCF
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.10
+      Role: "arn:aws:iam::374851180081:role/LabRole"
+      Timeout: 30
+      Code:
+        S3Bucket: b00930141bucketcloud
+        S3Key: InvokeLambda.zip
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref OrderBucketCF  
+          UPLOAD_IMAGE_TO_CF: !GetAtt LambdaFunction4.Arn 
+
+  User:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "email"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "email"
+          KeyType: "HASH"
+      TableName: "User"
+      ProvisionedThroughput:
+        ReadCapacityUnits: '2'
+        WriteCapacityUnits: '2'
+
+  Order:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      TableName: "Order"
+      ProvisionedThroughput:
+        ReadCapacityUnits: '2'
+        WriteCapacityUnits: '2'
+
+  Inventory:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "Product"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "Product"
+          KeyType: "HASH"
+      TableName: "Inventory"
+      ProvisionedThroughput:
+        ReadCapacityUnits: '2'
+        WriteCapacityUnits: '2'
+
+
+  #API Gateway to handle the requests.
+  celebdetectgateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: "celebdetectgateway"
+      Description: "API gateway for celebdetect web application"
+
+  # API Gateway Global to handle 4xx
+  celebdetectresponse4xx:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResponseType: DEFAULT_4XX
+      StatusCode: '404'
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+
+  # API Gateway Global to handle 5xx
+  celebdetectresponse5xx:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResponseType: DEFAULT_5XX
+      StatusCode: '500'
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+
+ #API Gateway resource for registeration functionality
+  registerationresource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt
+        - celebdetectgateway
+        - RootResourceId
+      PathPart: "registration"
+      RestApiId: !Ref celebdetectgateway
+
+  #API Service Gateway Method for registeration functionality
+  registerationmethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResourceId: !Ref registerationresource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: "AWS"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+          - StatusCode: 400
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+          - StatusCode: 500
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction1.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 400
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 500
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 404
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+  # API Service Gateway Method for registeration method OPTIONS
+  registerationmethodOPTIONS:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResourceId: !Ref registerationresource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: "AWS"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+          - StatusCode: 500
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction1.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 500
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+ #API Gateway resource for invoke functionality
+  invokeresource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt
+        - celebdetectgateway
+        - RootResourceId
+      PathPart: "invoke"
+      RestApiId: !Ref celebdetectgateway
+
+  #API Service Gateway Method for invoke functionality
+  invokemethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResourceId: !Ref invokeresource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: "AWS"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+          - StatusCode: 400
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+          - StatusCode: 500
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction5.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 400
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 500
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 404
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+  # API Service Gateway Method for logout method OPTIONS
+  invokemethodOPTIONS:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      ResourceId: !Ref invokeresource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: "AWS"
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+          - StatusCode: 400
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+          - StatusCode: 500
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction5.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 400
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 500
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+        - StatusCode: 404
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+  
+  gatewaydeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref celebdetectgateway
+      StageName: prod
+    DependsOn:
+      - invokemethod
+      - invokemethodOPTIONS
+      - registerationmethod
+      - registerationmethodOPTIONS
+      - celebdetectresponse4xx
+      - celebdetectresponse5xx
