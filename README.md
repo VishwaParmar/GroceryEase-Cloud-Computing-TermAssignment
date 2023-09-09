@@ -5,12 +5,14 @@ GroceryEase is a web application that modernizes the way you shop for groceries.
 
 ## Table of Contents
 
+- [Demo](#Demo)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Usage](#usage)
 - [AWS Services](#aws-services)
 
-
+## Demo
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/YOUTUBE_VIDEO_ID_HERE/0.jpg)]([http://www.youtube.com/watch?v=YOUTUBE_VIDEO_ID_HERE](https://www.youtube.com/watch?v=zE8WAXKPkYs&ab_channel=VishwaParmar))
 ## Features
 
 - **Manual Selection**: Browse through a wide range of groceries and add items to your cart with ease using our user-friendly interface.
